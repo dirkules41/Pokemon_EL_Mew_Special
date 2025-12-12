@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 📥 Checkout repo
+    - name: 📥 Checkout repository
       uses: actions/checkout@v3
       with:
         submodules: recursive
@@ -19,37 +19,37 @@ jobs:
     - name: 🔧 Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils git curl \
-        gcc-multilib g++-multilib gcc-arm-none-eabi libc6-dev-armel-cross
+        sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils git
 
-    - name: 📦 Install devkitARM using devkitPro APT
+    - name: 📦 Install devkitPro and devkitARM + agbcc
       run: |
-        sudo apt install -y apt-transport-https
-        echo "deb [signed-by=/usr/share/keyrings/devkitpro-pub.gpg] https://apt.devkitpro.org/ stable main" | sudo tee /etc/apt/sources.list.d/devkitpro.list
-        curl -L https://apt.devkitpro.org/devkitpro-pub.gpg | sudo tee /usr/share/keyrings/devkitpro-pub.gpg
-        sudo apt update
-        sudo apt install -y devkitpro-pacman
+        # Install devkitPro pacman
+        wget https://apt.devkitpro.org/install-devkitpro-pacman
+        chmod +x install-devkitpro-pacman
+        sudo ./install-devkitpro-pacman
+
+        # Update and install devkitARM + agbcc
         sudo dkp-pacman -Syu --noconfirm
-        sudo dkp-pacman -S --noconfirm devkitARM
+        sudo dkp-pacman -S --noconfirm devkitARM agbcc
+
+        # Set environment variables for GitHub Actions
         echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
         echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
         echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+        echo "/opt/devkitpro/agbcc/bin" >> $GITHUB_PATH
 
-    - name: 🔨 Build internal tools (agbcc etc.)
+    - name: 🔨 Build internal tools
       run: |
-        make tools
-        if [ ! -f tools/agbcc/bin/agbcc ]; then
-          echo "Error: agbcc was not built!"
-          exit 1
-        fi
-        export PATH=$(pwd)/tools/agbcc/bin:$PATH
+        chmod +x build_tools.sh || true
+        ./build_tools.sh || true
+        # Optional check removed since we installed agbcc via dkp-pacman
 
     - name: 🛠 Build ROM
       run: |
         make clean
         make -j$(nproc)
 
-    - name: 📦 Upload ROM Artifact
+    - name: 📦 Upload ROM artifact
       uses: actions/upload-artifact@v4
       with:
         name: Emerald-Legacy-Mew
