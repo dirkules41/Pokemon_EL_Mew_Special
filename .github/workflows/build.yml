@@ -19,21 +19,7 @@ jobs:
     - name: 🔧 Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential git libpng-dev zlib1g-dev wget cmake pkg-config
-
-    - name: 📦 Install devkitARM
-      run: |
-        wget https://apt.devkitpro.org/install-devkitpro-pacman
-        chmod +x install-devkitpro-pacman
-        sudo ./install-devkitpro-pacman
-        sudo dkp-pacman -Syu --noconfirm
-        sudo dkp-pacman -S devkitARM --noconfirm
-
-    - name: 🌱 Setup environment
-      run: |
-        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
-        echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
-        echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+        sudo apt install -y build-essential libpng-dev python3
 
     - name: 🔨 Build internal tools
       run: |
