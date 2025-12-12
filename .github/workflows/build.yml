@@ -19,7 +19,16 @@ jobs:
     - name: 🔧 Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential libpng-dev python3
+        sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils
+
+    - name: 📦 Install devkitARM (direct release)
+      run: |
+        mkdir -p /opt/devkitpro
+        wget https://github.com/devkitPro/devkitARM/releases/latest/download/devkitARM-linux_x86_64.tar.xz
+        tar -xf devkitARM-linux_x86_64.tar.xz -C /opt/devkitpro
+        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
+        echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
+        echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
 
     - name: 🔨 Build internal tools
       run: |
