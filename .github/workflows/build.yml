@@ -80,4 +80,22 @@ steps:
     else
       echo "arm-none-eabi-gcc not found in PATH; listing /opt/devkitpro contents for debugging"
       ls -la /opt/devkitpro || true
-      ls -la /opt/devkit
+      ls -la /opt/devkitpro/devkitARM/bin || true
+      exit 1
+    fi
+
+- name: 🔨 Build internal tools
+  run: |
+    chmod +x build_tools.sh
+    ./build_tools.sh
+
+- name: 🛠 Build ROM
+  run: |
+    make clean
+    make -j$(nproc)
+
+- name: 📦 Upload ROM Artifact
+  uses: actions/upload-artifact@v4
+  with:
+    name: Emerald-Legacy-Mew
+    path: '*.gba'
