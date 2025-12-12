@@ -1,48 +1,57 @@
-name: Build Pokemon Emerald
+name: Build Pokémon Emerald ROM
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      baserom:
+        description: "Upload your baserom.gba file"
+        required: true
+        type: file
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      DEBIAN_FRONTEND: noninteractive
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    # Base-ROM aus Upload wiederherstellen
+    - name: Extract base ROM
+      uses: actions/download-artifact@v3
+      with:
+        name: baserom
+        path: .
+
+    - name: Rename base ROM
+      run: mv *.gba baserom.gba
+
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y \
-          build-essential \
-          gcc-multilib \
-          g++-multilib \
-          git \
-          wget \
-          libpng-dev \
-          zlib1g-dev \
-          cmake \
-          python3
+        sudo apt install -y build-essential git automake wget unzip
 
-    - name: Clone and build agbcc
+        # devkitARM installieren (standard devkitPro install script)
+        sudo mkdir -p /opt/devkitpro
+        sudo chown $USER /opt/devkitpro
+        wget https://apt.devkitpro.org/install-devkitpro-pacman
+        chmod +x install-devkitpro-pacman
+        sudo ./install-devkitpro-pacman
+
+        sudo dkp-pacman -Sy --noconfirm devkitARM general-tools
+
+        export DEVKITPRO=/opt/devkitpro
+        export DEVKITARM=/opt/devkitpro/devkitARM
+        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
+        echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
+
+    - name: Build ROM
       run: |
-        git clone https://github.com/pret/agbcc.git
-        cd agbcc
-        ./build.sh
-      shell: bash
+        make clean
+        make
 
-    - name: Add agbcc to PATH
-      run: echo "${GITHUB_WORKSPACE}/agbcc/bin" >> $GITHUB_PATH
-
-    - name: Build tools
-      run: make tools
-
-    - name: Build game
-      run: make -j$(nproc)
+    - name: Upload built ROM
+      uses: actions/upload-artifact@v3
+      with:
+        name: Built-ROM
+        path: "*.gba"
