@@ -11,23 +11,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 📥 Checkout repo
+    - name: 📥 Checkout repository
       uses: actions/checkout@v3
       with:
         submodules: recursive
 
-    - name: 🔧 Install dependencies
+    - name: 🔧 Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils
+        sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils curl git
 
-    - name: 🔧 Install devkitARM & devkitPro
+    - name: 📦 Install devkitPro & devkitARM
       run: |
-        sudo apt update
-        sudo apt install -y apt-transport-https curl xz-utils
-
-        # devkitPro APT Repo einrichten
-        curl -L https://apt.devkitpro.org/devkitpro-pub.gpg | sudo tee /usr/share/keyrings/devkitpro-pub.gpg > /dev/null
+        # devkitPro APT key & repository
+        curl -L https://apt.devkitpro.org/devkitpro-pub.gpg | sudo tee /usr/share/keyrings/devkitpro-pub.gpg
         echo "deb [signed-by=/usr/share/keyrings/devkitpro-pub.gpg] https://apt.devkitpro.org/ stable main" | sudo tee /etc/apt/sources.list.d/devkitpro.list
 
         sudo apt update
@@ -35,12 +32,13 @@ jobs:
         sudo dkp-pacman -Syu --noconfirm
         sudo dkp-pacman -S --noconfirm devkitARM
 
-        # Environment variables setzen
+        # Set environment variables
         echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
         echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
         echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+        export PATH=/opt/devkitpro/devkitARM/bin:$PATH
 
-    - name: 🔨 Build internal tools
+    - name: 🔨 Build internal tools (agbcc etc.)
       run: |
         chmod +x build_tools.sh
         ./build_tools.sh
@@ -50,7 +48,7 @@ jobs:
         make clean
         make -j$(nproc)
 
-    - name: 📦 Upload ROM Artifact
+    - name: 📦 Upload ROM artifact
       uses: actions/upload-artifact@v4
       with:
         name: Emerald-Legacy-Mew
