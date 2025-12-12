@@ -21,18 +21,15 @@ jobs:
         sudo apt update
         sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils git
 
-    - name: 📦 Install devkitPro and devkitARM + agbcc
+    - name: 📦 Install devkitPro, devkitARM & agbcc
       run: |
-        # Install devkitPro pacman
         wget https://apt.devkitpro.org/install-devkitpro-pacman
         chmod +x install-devkitpro-pacman
         sudo ./install-devkitpro-pacman
-
-        # Update and install devkitARM + agbcc
         sudo dkp-pacman -Syu --noconfirm
         sudo dkp-pacman -S --noconfirm devkitARM agbcc
 
-        # Set environment variables for GitHub Actions
+        # Add to PATH and set environment
         echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
         echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
         echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
@@ -42,7 +39,7 @@ jobs:
       run: |
         chmod +x build_tools.sh || true
         ./build_tools.sh || true
-        # Optional check removed since we installed agbcc via dkp-pacman
+        make tools || true  # baut agbcc, falls noch nicht gebaut
 
     - name: 🛠 Build ROM
       run: |
