@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DEBIAN_FRONTEND: noninteractive
 
     steps:
     - name: 📥 Checkout repo
@@ -16,30 +18,44 @@ jobs:
       with:
         submodules: recursive
 
-    - name: 🔧 Install dependencies
+    - name: 🔍 Show runner info
       run: |
-        sudo apt update
-        sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils
+        uname -a
+        lsb_release -a || true
+        which curl || sudo apt-get update -y && sudo apt-get install -y curl
 
-    - name: 🔧 Install devkitARM (official APT repo)
+    - name: 🔧 Install base dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y apt-transport-https curl
+        sudo apt-get install -y --no-install-recommends \
+          ca-certificates curl gnupg apt-transport-https \
+          build-essential libpng-dev python3 wget tar xz-utils
 
-        # Add devkitPro APT repo
-        echo "deb https://apt.devkitpro.org/ stable main" | sudo tee /etc/apt/sources.list.d/devkitpro.list
-        curl -L https://apt.devkitpro.org/devkitpro-pub.gpg | sudo tee /usr/share/keyrings/devkitpro-pub.gpg
-
+    - name: 🗝 Add devkitPro APT repo and import GPG key (signed-by)
+      run: |
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://apt.devkitpro.org/devkitpro-key.gpg | sudo tee /etc/apt/keyrings/devkitpro.gpg > /dev/null
+        echo 'deb [signed-by=/etc/apt/keyrings/devkitpro.gpg] https://apt.devkitpro.org stable main' | sudo tee /etc/apt/sources.list.d/devkitpro.list
         sudo apt-get update
-        sudo apt-get install -y devkitpro-pacman
 
+    - name: 🔧 Install devkitpro-pacman and devkitARM
+      run: |
+        sudo apt-get install -y --no-install-recommends devkitpro-pacman
+        # Update pacman DB and install devkitARM non-interactively
         sudo dkp-pacman -Syu --noconfirm
         sudo dkp-pacman -S --noconfirm devkitARM
 
+        # Export devkit environment for subsequent steps
         echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
         echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
         echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
 
+    - name: 🔎 Verify toolchain
+      run: |
+        echo "DEVKITPRO=$DEVKITPRO"
+        echo "DEVKITARM=$DEVKITARM"
+        which arm-none-eabi-gcc || true
+        arm-none-eabi-gcc --version || true
 
     - name: 🔨 Build internal tools
       run: |
