@@ -33,9 +33,6 @@ jobs:
         echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
         echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
 
-    - name: Install ARM toolchain & newlib
-      run: sudo apt-get update && sudo apt-get install gcc-arm-none-eabi libnewlib-arm-none-eabi-dev
-
     - name: 🔨 Build internal tools
       run: |
         chmod +x build_tools.sh
