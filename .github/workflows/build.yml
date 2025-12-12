@@ -19,14 +19,12 @@ jobs:
     - name: 🔧 Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils curl git
+        sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils curl git gcc-arm-none-eabi
 
     - name: 📦 Install devkitPro & devkitARM
       run: |
-        # devkitPro APT key & repository
         curl -L https://apt.devkitpro.org/devkitpro-pub.gpg | sudo tee /usr/share/keyrings/devkitpro-pub.gpg
         echo "deb [signed-by=/usr/share/keyrings/devkitpro-pub.gpg] https://apt.devkitpro.org/ stable main" | sudo tee /etc/apt/sources.list.d/devkitpro.list
-
         sudo apt update
         sudo apt install -y devkitpro-pacman
         sudo dkp-pacman -Syu --noconfirm
@@ -38,13 +36,20 @@ jobs:
         echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
         export PATH=/opt/devkitpro/devkitARM/bin:$PATH
 
-    - name: 🔨 Build internal tools (agbcc etc.)
+    - name: 🔨 Build internal tools (agbcc)
       run: |
         chmod +x build_tools.sh
         ./build_tools.sh
 
+        # Check if agbcc exists
+        if [ ! -f tools/agbcc/bin/agbcc ]; then
+          echo "Error: agbcc was not built!"
+          exit 1
+        fi
+
     - name: 🛠 Build ROM
       run: |
+        echo "Using DEVKITARM: $DEVKITARM"
         make clean
         make -j$(nproc)
 
