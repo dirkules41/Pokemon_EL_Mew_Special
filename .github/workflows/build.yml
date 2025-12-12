@@ -1,74 +1,83 @@
-name: Build Emerald Legacy ROM
+steps:
+- name: 📥 Checkout repo
+  uses: actions/checkout@v3
+  with:
+    submodules: recursive
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+- name: 🔍 Show runner info
+  run: |
+    uname -a
+    lsb_release -a || true
+    if ! command -v curl >/dev/null 2>&1; then
+      sudo apt-get update -y
+      sudo apt-get install -y curl
+    fi
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    env:
-      DEBIAN_FRONTEND: noninteractive
+- name: 🔧 Install base dependencies
+  run: |
+    sudo apt-get update
+    sudo apt-get install -y --no-install-recommends \
+      ca-certificates curl gnupg apt-transport-https \
+      build-essential libpng-dev python3 wget tar xz-utils
 
-    steps:
-    - name: 📥 Checkout repo
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
+- name: 🗝 Add devkitPro APT repo and import GPG key (robust)
+  run: |
+    set -euo pipefail
+    sudo mkdir -p /etc/apt/keyrings
+    # Try known key URLs (falls back to multiple locations)
+    KEYRING_PATH=/etc/apt/keyrings/devkitpro.gpg
+    TMP_KEY=/tmp/devkitpro.gpg
+    tried=0
+    urls=(
+      "https://apt.devkitpro.org/devkitpro-keyring.gpg"
+      "https://apt.devkitpro.org/devkitpro-key.gpg"
+      "https://raw.githubusercontent.com/devkitPro/packaging/master/keys/devkitpro-keyring.gpg"
+    )
+    for url in "${urls[@]}"; do
+      tried=$((tried+1))
+      echo "Trying to download devkitPro key from: $url"
+      if curl -fsSL "$url" -o "$TMP_KEY"; then
+        sudo mv "$TMP_KEY" "$KEYRING_PATH"
+        sudo chmod 644 "$KEYRING_PATH"
+        echo "Imported devkitPro key from: $url"
+        break
+      else
+        echo "Failed to download from: $url"
+      fi
+    done
+    if [ ! -f "$KEYRING_PATH" ]; then
+      echo "Error: could not download devkitPro GPG key from any known location" >&2
+      exit 1
+    fi
+    echo 'deb [signed-by=/etc/apt/keyrings/devkitpro.gpg] https://apt.devkitpro.org stable main' | sudo tee /etc/apt/sources.list.d/devkitpro.list
+    sudo apt-get update
 
-    - name: 🔍 Show runner info
-      run: |
-        uname -a
-        lsb_release -a || true
-        which curl || sudo apt-get update -y && sudo apt-get install -y curl
+- name: 🔧 Install devkitpro-pacman and devkitARM
+  run: |
+    set -euo pipefail
+    # Install the apt package that provides dkp-pacman
+    sudo apt-get install -y --no-install-recommends devkitpro-pacman
+    # Ensure dkp-pacman is available
+    if ! command -v dkp-pacman >/dev/null 2>&1; then
+      echo "dkp-pacman not found after install" >&2
+      exit 1
+    fi
+    # Update pacman DB and install devkitARM non-interactively
+    sudo dkp-pacman -Syu --noconfirm
+    sudo dkp-pacman -S --noconfirm devkitARM
 
-    - name: 🔧 Install base dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          ca-certificates curl gnupg apt-transport-https \
-          build-essential libpng-dev python3 wget tar xz-utils
+    # Export devkit environment for subsequent steps
+    echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
+    echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
+    echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
 
-    - name: 🗝 Add devkitPro APT repo and import GPG key (signed-by)
-      run: |
-        sudo mkdir -p /etc/apt/keyrings
-        curl -fsSL https://apt.devkitpro.org/devkitpro-key.gpg | sudo tee /etc/apt/keyrings/devkitpro.gpg > /dev/null
-        echo 'deb [signed-by=/etc/apt/keyrings/devkitpro.gpg] https://apt.devkitpro.org stable main' | sudo tee /etc/apt/sources.list.d/devkitpro.list
-        sudo apt-get update
-
-    - name: 🔧 Install devkitpro-pacman and devkitARM
-      run: |
-        sudo apt-get install -y --no-install-recommends devkitpro-pacman
-        # Update pacman DB and install devkitARM non-interactively
-        sudo dkp-pacman -Syu --noconfirm
-        sudo dkp-pacman -S --noconfirm devkitARM
-
-        # Export devkit environment for subsequent steps
-        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
-        echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
-        echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
-
-    - name: 🔎 Verify toolchain
-      run: |
-        echo "DEVKITPRO=$DEVKITPRO"
-        echo "DEVKITARM=$DEVKITARM"
-        which arm-none-eabi-gcc || true
-        arm-none-eabi-gcc --version || true
-
-    - name: 🔨 Build internal tools
-      run: |
-        chmod +x build_tools.sh
-        ./build_tools.sh
-
-    - name: 🛠 Build ROM
-      run: |
-        make clean
-        make -j$(nproc)
-
-    - name: 📦 Upload ROM Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: Emerald-Legacy-Mew
-        path: '*.gba'
+- name: 🔎 Verify toolchain
+  run: |
+    echo "DEVKITPRO=$DEVKITPRO"
+    echo "DEVKITARM=$DEVKITARM"
+    if command -v arm-none-eabi-gcc >/dev/null 2>&1; then
+      arm-none-eabi-gcc --version
+    else
+      echo "arm-none-eabi-gcc not found in PATH; listing /opt/devkitpro contents for debugging"
+      ls -la /opt/devkitpro || true
+      ls -la /opt/devkit
