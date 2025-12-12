@@ -13,6 +13,8 @@ jobs:
     steps:
     - name: 📥 Checkout repo
       uses: actions/checkout@v3
+      with:
+        submodules: recursive
 
     - name: 🔧 Install system dependencies
       run: |
@@ -32,6 +34,12 @@ jobs:
         echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
         echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
         echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+
+    - name: 🔨 Build agbcc
+      run: |
+        git submodule update --init --recursive
+        cd tools/agbcc
+        ./build.sh
 
     - name: 🛠 Build ROM + tools
       run: |
