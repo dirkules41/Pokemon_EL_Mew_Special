@@ -1,4 +1,4 @@
-name: Build ROM
+name: Build Emerald Legacy ROM
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
       with:
         submodules: recursive
 
-    - name: 🔧 Install system dependencies
+    - name: 🔧 Install dependencies
       run: |
         sudo apt update
         sudo apt install -y build-essential git libpng-dev zlib1g-dev wget cmake pkg-config
@@ -35,13 +35,12 @@ jobs:
         echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
         echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
 
-    - name: 🔨 Build agbcc
+    - name: 🔨 Build internal tools
       run: |
-        git submodule update --init --recursive
-        cd tools/agbcc
-        ./build.sh
+        chmod +x build_tools.sh
+        ./build_tools.sh
 
-    - name: 🛠 Build ROM + tools
+    - name: 🛠 Build ROM
       run: |
         make clean
         make -j$(nproc)
