@@ -1,53 +1,64 @@
-name: Build Emerald Legacy ROM
+name: Build Pokemon Emerald Legacy ROM
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DEBIAN_FRONTEND: noninteractive
 
     steps:
-    - name: 📥 Checkout repository
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
+      # 1️⃣ Checkout Repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: 🔧 Install system dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils git
+      # 2️⃣ Systemabhängigkeiten installieren
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils git
 
-    - name: 📦 Install devkitPro, devkitARM & agbcc
-      run: |
-        wget https://apt.devkitpro.org/install-devkitpro-pacman
-        chmod +x install-devkitpro-pacman
-        sudo ./install-devkitpro-pacman
-        sudo dkp-pacman -Syu --noconfirm
-        sudo dkp-pacman -S --noconfirm devkitARM agbcc
+      # 3️⃣ devkitPro + devkitARM + agbcc installieren
+      - name: Install devkitPro, devkitARM, agbcc
+        run: |
+          wget https://apt.devkitpro.org/install-devkitpro-pacman
+          chmod +x install-devkitpro-pacman
+          sudo ./install-devkitpro-pacman
+          sudo dkp-pacman -Syu --noconfirm
+          sudo dkp-pacman -S --noconfirm devkitARM agbcc
 
-        # Add to PATH and set environment
-        echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
-        echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
-        echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
-        echo "/opt/devkitpro/agbcc/bin" >> $GITHUB_PATH
+      # 4️⃣ Umgebungsvariablen setzen
+      - name: Set environment variables
+        run: |
+          echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
+          echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
+          echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+          echo "/opt/devkitpro/agbcc/bin" >> $GITHUB_PATH
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITARM=/opt/devkitpro/devkitARM
+          export PATH=/opt/devkitpro/devkitARM/bin:/opt/devkitpro/agbcc/bin:$PATH
 
-    - name: 🔨 Build internal tools
-      run: |
-        chmod +x build_tools.sh || true
-        ./build_tools.sh || true
-        make tools || true  # baut agbcc, falls noch nicht gebaut
+      # 5️⃣ Interne Tools bauen
+      - name: Build internal tools
+        run: |
+          make tools
 
-    - name: 🛠 Build ROM
-      run: |
-        make clean
-        make -j$(nproc)
+      # 6️⃣ ROM bauen
+      - name: Build Emerald ROM
+        run: |
+          make clean
+          make -j$(nproc)
 
-    - name: 📦 Upload ROM artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: Emerald-Legacy-Mew
-        path: '*.gba'
+      # 7️⃣ Artefakte speichern
+      - name: Upload GBA ROM
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pokemon-Emerald-ROM
+          path: |
+            pokeemerald.gba
+            pokeemerald_modern.gba
