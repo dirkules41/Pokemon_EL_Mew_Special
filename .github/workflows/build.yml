@@ -21,17 +21,25 @@ jobs:
         sudo apt update
         sudo apt install -y build-essential libpng-dev python3 wget tar xz-utils
 
-    - name: 📦 Install devkitARM (bundle)
+    - name: 🔧 Install devkitARM (official APT repo)
       run: |
-        mkdir -p /opt/devkitpro
-        wget https://github.com/devkitPro/pacman/releases/latest/download/devkitpro-pacman-linux.tar.xz
-        tar -xf devkitpro-pacman-linux.tar.xz -C /opt/devkitpro
-        /opt/devkitpro/pacman/bin/pacman -Sy --noconfirm
-        /opt/devkitpro/pacman/bin/pacman -S --noconfirm devkitARM
+        sudo apt-get update
+        sudo apt-get install -y apt-transport-https curl
+
+        # Add devkitPro APT repo
+        echo "deb https://apt.devkitpro.org/ stable main" | sudo tee /etc/apt/sources.list.d/devkitpro.list
+        curl -L https://apt.devkitpro.org/devkitpro-pub.gpg | sudo tee /usr/share/keyrings/devkitpro-pub.gpg
+
+        sudo apt-get update
+        sudo apt-get install -y devkitpro-pacman
+
+        sudo dkp-pacman -Syu --noconfirm
+        sudo dkp-pacman -S --noconfirm devkitARM
 
         echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
         echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
         echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
+
 
     - name: 🔨 Build internal tools
       run: |
